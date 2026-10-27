@@ -838,6 +838,8 @@ paths:
                   type: integer
                 tx_power:
                   type: number
+                  minimum: -9
+                  maximum: 30
                 preamble_length:
                   type: integer
                 flood_advert_interval_hours:

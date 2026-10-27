@@ -581,6 +581,10 @@ sx1262:
   # TX/RX enable pins (-1 to disable)
   txen_pin: -1
   rxen_pin: -1
+  # Enable pin polarity defaults to active-high for existing hardware.
+  # BQ Station G3 with LNA P jumper removed: rxen_pin: 23, rxen_active_high: false.
+  txen_active_high: true
+  rxen_active_high: true
 
   # Optional radio power-enable pin(s) driven HIGH during init
   en_pin: -1

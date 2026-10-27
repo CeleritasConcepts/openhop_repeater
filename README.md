@@ -61,6 +61,9 @@ Historical statistics and performance metrics.
 
 ## Supported Hardware
 
+For Station G3 GPIO23 LNA control and upgrading an existing configuration, see
+[BQ Station G3 external LNA control](docs/station-g3.md).
+
 openHop Repeater supports these radio backends:
 
 - **SX1262 over Linux SPI**: set `radio_type: sx1262`

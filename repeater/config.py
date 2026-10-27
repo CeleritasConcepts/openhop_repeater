@@ -497,7 +497,7 @@ def get_radio_for_board(board_config: dict):
         radio_type = "kiss"
 
     if radio_type in ("sx1262", "sx1262_ch341"):
-        from openhop_core.hardware.sx1262_wrapper import SX1262Radio
+        from repeater.sx1262_radio import SX1262Radio
 
         # Get radio and SPI configuration - all settings must be in config file
         spi_config = board_config.get("sx1262")
@@ -559,6 +559,8 @@ def get_radio_for_board(board_config: dict):
             "irq_pin": _parse_int(spi_config["irq_pin"]),
             "txen_pin": _parse_int(spi_config["txen_pin"]),
             "rxen_pin": _parse_int(spi_config["rxen_pin"]),
+            "txen_active_high": spi_config.get("txen_active_high", True),
+            "rxen_active_high": spi_config.get("rxen_active_high", True),
             "txled_pin": _parse_int(spi_config.get("txled_pin", -1), default=-1),
             "rxled_pin": _parse_int(spi_config.get("rxled_pin", -1), default=-1),
             "use_dio3_tcxo": spi_config.get("use_dio3_tcxo", False),

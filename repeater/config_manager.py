@@ -52,7 +52,11 @@ class ConfigManager:
             repeater_handler.radio_config = {}
 
         repeater_handler.radio_config.update(
-            {key: value for key, value in radio_cfg.items() if value not in (None, 0)}
+            {
+                key: value
+                for key, value in radio_cfg.items()
+                if value is not None and (key == "tx_power" or value != 0)
+            }
         )
 
     def _kiss_transport_restart_required(self) -> bool:
@@ -102,6 +106,11 @@ class ConfigManager:
                 )
                 if not applied:
                     logger.warning("Live radio reconfiguration failed")
+                    return False
+                # SX1262.configure_radio updates modulation only. KISS consumes
+                # tx_power from radio_config, but SX1262 needs its own setter.
+                if hasattr(radio, "set_tx_power") and not radio.set_tx_power(radio_cfg["tx_power"]):
+                    logger.warning("Live TX power update failed")
                     return False
             else:
                 current_frequency = getattr(radio, "frequency", None)

@@ -1730,6 +1730,9 @@ class APIEndpoints:
                     config_yaml["sx1262"]["txen_pin"] = hw_config.get("txen_pin", -1)
                 if "rxen_pin" in hw_config:
                     config_yaml["sx1262"]["rxen_pin"] = hw_config.get("rxen_pin", -1)
+                # Reset polarity when switching away from an active-low board.
+                for key in ("txen_active_high", "rxen_active_high"):
+                    config_yaml["sx1262"][key] = hw_config.get(key, True)
                 if "en_pin" in hw_config:
                     config_yaml["sx1262"]["en_pin"] = hw_config.get("en_pin", -1)
                 if "en_pins" in hw_config:
@@ -4767,7 +4770,7 @@ class APIEndpoints:
 
         POST /api/update_radio_config
         Body: {
-            "tx_power": 22,              # TX power in dBm (2-30)
+            "tx_power": 22,              # TX power in dBm (-9 to +30)
             "frequency": 869618000,      # Frequency in Hz (100-1000 MHz)
             "bandwidth": 62500,          # Bandwidth in Hz (valid: 7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125, 250, 500 kHz)
             "spreading_factor": 8,       # Spreading factor (5-12)
@@ -4784,7 +4787,7 @@ class APIEndpoints:
             "advert_interval_minutes": 120      # Local advert interval (0 or 1-10080)
         }
 
-        Note: Radio hardware changes (frequency, bandwidth, SF, CR) require restart to apply.
+        Radio changes are applied live when supported; otherwise a restart is required.
 
         Returns: {"success": true, "data": {"applied": [...], "live_update": true}}
         """
@@ -4853,11 +4856,11 @@ class APIEndpoints:
                             self.config["radio"] = {}
                         self.config["radio"][key] = value
 
-            # Update TX power (up to 30 dBm for high-power radios)
+            # Match config validation; low-power SX1262 settings may be negative.
             if "tx_power" in data:
                 power = int(data["tx_power"])
-                if power < 2 or power > 30:
-                    return self._error("TX power must be 2-30 dBm")
+                if power < -9 or power > 30:
+                    return self._error("TX power must be between -9 and +30 dBm")
                 _set_radio_param("tx_power", power)
                 applied.append(f"power={power}dBm")
 

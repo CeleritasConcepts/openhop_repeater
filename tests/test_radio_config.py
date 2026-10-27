@@ -10,7 +10,8 @@ class _DummyRadio:
         return True
 
 
-def test_get_radio_for_board_passes_en_pins(monkeypatch):
+@pytest.mark.parametrize("polarity", [{}, {"txen_active_high": False, "rxen_active_high": False}])
+def test_get_radio_for_board_passes_en_pins(monkeypatch, polarity):
     captured_kwargs = {}
 
     class _DummySX1262Radio(_DummyRadio):
@@ -18,7 +19,7 @@ def test_get_radio_for_board_passes_en_pins(monkeypatch):
             captured_kwargs.update(kwargs)
 
     monkeypatch.setattr(
-        "openhop_core.hardware.sx1262_wrapper.SX1262Radio",
+        "repeater.sx1262_radio.SX1262Radio",
         _DummySX1262Radio,
     )
 
@@ -34,6 +35,7 @@ def test_get_radio_for_board_passes_en_pins(monkeypatch):
             "txen_pin": -1,
             "rxen_pin": -1,
             "en_pins": [26, 23],
+            **polarity,
         },
         "radio": {
             "frequency": 915000000,
@@ -50,6 +52,8 @@ def test_get_radio_for_board_passes_en_pins(monkeypatch):
 
     assert captured_kwargs["en_pins"] == [26, 23]
     assert "en_pin" not in captured_kwargs
+    assert captured_kwargs["txen_active_high"] is polarity.get("txen_active_high", True)
+    assert captured_kwargs["rxen_active_high"] is polarity.get("rxen_active_high", True)
 
 
 def test_get_radio_for_board_null_radio_type_returns_null_radio():

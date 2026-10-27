@@ -138,16 +138,12 @@ if [ -z "$API_RESPONSE" ]; then
     fi
 fi
 
-# Parse JSON entries - one per line, extracting each field
-SETTINGS=$(echo "$API_RESPONSE" | grep -o '{[^{}]*"title"[^{}]*"coding_rate"[^{}]*}' | sed 's/.*"title":"\([^"]*\)".*/\1/' | while read title; do
-    entry=$(echo "$API_RESPONSE" | grep -o "{[^{}]*\"title\":\"$title\"[^{}]*\"coding_rate\"[^{}]*}")
-    desc=$(echo "$entry" | sed 's/.*"description":"\([^"]*\)".*/\1/')
-    freq=$(echo "$entry" | sed 's/.*"frequency":"\([^"]*\)".*/\1/')
-    sf=$(echo "$entry" | sed 's/.*"spreading_factor":"\([^"]*\)".*/\1/')
-    bw=$(echo "$entry" | sed 's/.*"bandwidth":"\([^"]*\)".*/\1/')
-    cr=$(echo "$entry" | sed 's/.*"coding_rate":"\([^"]*\)".*/\1/')
-    echo "$title|$desc|$freq|$sf|$bw|$cr"
-done)
+# Parse both compact API responses and the formatted local fallback JSON.
+SETTINGS=$(echo "$API_RESPONSE" | jq -r '
+    .config.suggested_radio_settings.entries[] |
+    [.title, (.description // ""), .frequency, .spreading_factor, .bandwidth, .coding_rate] |
+    map(tostring) | join("|")
+')
 
 if [ -z "$SETTINGS" ]; then
     echo "Error: Could not parse radio settings from API response"
@@ -279,6 +275,9 @@ else
     irq_pin=$(echo "$hw_config" | jq -r '.irq_pin // empty')
     txen_pin=$(echo "$hw_config" | jq -r '.txen_pin // empty')
     rxen_pin=$(echo "$hw_config" | jq -r '.rxen_pin // empty')
+    # jq's // also replaces false; default only missing/null polarity fields.
+    txen_active_high=$(echo "$hw_config" | jq -r 'if .txen_active_high == null then true else .txen_active_high end')
+    rxen_active_high=$(echo "$hw_config" | jq -r 'if .rxen_active_high == null then true else .rxen_active_high end')
     txled_pin=$(echo "$hw_config" | jq -r '.txled_pin // empty')
     rxled_pin=$(echo "$hw_config" | jq -r '.rxled_pin // empty')
     tx_power=$(echo "$hw_config" | jq -r '.tx_power // empty')
@@ -318,6 +317,16 @@ else
     [ -n "$irq_pin" ] && sed "${SED_OPTS[@]}" "s/^  irq_pin:.*/  irq_pin: $irq_pin/" "$CONFIG_FILE"
     [ -n "$txen_pin" ] && sed "${SED_OPTS[@]}" "s/^  txen_pin:.*/  txen_pin: $txen_pin/" "$CONFIG_FILE"
     [ -n "$rxen_pin" ] && sed "${SED_OPTS[@]}" "s/^  rxen_pin:.*/  rxen_pin: $rxen_pin/" "$CONFIG_FILE"
+
+    # Older configs lack polarity fields. Also reset them for active-high boards.
+    for key in txen_active_high rxen_active_high; do
+        value="${!key}"
+        if grep -q "^  $key:" "$CONFIG_FILE"; then
+            sed "${SED_OPTS[@]}" "s/^  $key:.*/  $key: $value/" "$CONFIG_FILE"
+        else
+            sed "${SED_OPTS[@]}" "/^sx1262:/a\\  $key: $value" "$CONFIG_FILE"
+        fi
+    done
 
     # Handle LED pins - add if missing, update if present
     if [ -n "$txled_pin" ]; then
